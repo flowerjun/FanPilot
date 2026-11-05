@@ -1,0 +1,21 @@
+# Build output
+build/
+
+# macOS
+.DS_Store
+
+# AI assistant instructions / rules / local context (kept private)
+CLAUDE.md
+CLAUDE.local.md
+**/CLAUDE.md
+.claude/
+AGENTS.md
+GEMINI.md
+.gemini/
+.cursorrules
+.cursor/
+.windsurfrules
+.github/copilot-instructions.md
+.aider*
+.continue/
+.clinerules
