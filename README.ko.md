@@ -93,12 +93,30 @@
 
 ## 설치하기
 
+### 터미널 한 줄로 설치 (가장 간단)
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/flowerjun/FanPilot/main/scripts/get.sh | bash
+```
+
+최신 릴리즈를 받아 GitHub에 올라간 SHA-256과 대조한 뒤 **응용 프로그램** 폴더에 넣습니다. 이렇게 받은 파일에는 macOS의 격리 표시가 붙지 않아서 "그래도 열기"를 누를 필요가 없습니다. 업데이트할 때도 같은 명령을 다시 실행하면 됩니다.
+
+설치가 끝나면 FanPilot 창 위쪽의 **설치 (관리자 암호 필요)**를 눌러 팬 제어 서비스를 설치합니다.
+
+### DMG로 설치
+
 1. [Releases](../../releases) 페이지에서 `FanPilot.dmg`를 내려받습니다.
 2. DMG를 열고 **FanPilot**을 **응용 프로그램** 폴더로 끌어다 놓습니다.
 3. FanPilot을 엽니다. Apple 공증을 받지 않은 앱이라 처음에는 "개발자를 확인할 수 없습니다"라는 경고가 뜰 수 있습니다. 앱을 오른쪽 클릭해서 **열기** → **열기**를 누르거나, **시스템 설정 → 개인정보 보호 및 보안**에서 **그래도 열기**를 누르세요.
 4. 창 위쪽의 **설치 (관리자 암호 필요)** 버튼을 누르고 암호를 입력합니다. 실제로 팬 속도를 바꿔 주는 작은 백그라운드 서비스가 설치됩니다.
 
 서비스는 부팅할 때부터 자동으로 돌아갑니다. 로그인할 때 메뉴 막대 아이콘도 함께 띄우려면 **일반 → 로그인 시 자동 실행**을 켜 두세요.
+
+### 업데이트
+
+FanPilot은 실행하고 조금 뒤, 그리고 하루에 한 번 GitHub에서 새 버전을 확인합니다(**일반** 탭에서 끌 수 있습니다). 새 버전이 나오면 배너가 뜨고, **업데이트**를 누르면 됩니다. 앱이 직접 내려받아 SHA-256을 확인하고, 관리자 암호를 한 번 물은 뒤 앱과 팬 제어 서비스를 바꾸고 다시 실행합니다. 지우고 다시 깔거나 "그래도 열기"를 다시 누를 필요가 없습니다.
+
+이 기능은 0.1.2부터 들어 있습니다. 0.1.1 이하에서 0.1.2로 올릴 때는 위의 터미널 명령(또는 DMG)을 한 번 더 쓰세요.
 
 ## 사용 방법
 
@@ -203,8 +221,9 @@ Sources/
   App/     FanPilotApp.swift (모델), ContentView.swift (탭), Monitor.swift,
            Charts.swift, Components.swift (공통 UI), Presets.swift,
            StatusBarController.swift, LiveState.swift, SystemInfo.swift,
-           DaemonInstaller.swift, Localization.swift
-scripts/   fanpilot-admin.sh  (root 권한 설치·삭제, 앱 안에 함께 들어감)
+           DaemonInstaller.swift, Updater.swift, Localization.swift
+scripts/   fanpilot-admin.sh  (root 권한 설치·업데이트·삭제, 앱 안에 함께 들어감)
+           get.sh             (터미널 한 줄 설치·업데이트)
 tools/     make_icon.swift
 ```
 

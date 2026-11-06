@@ -58,6 +58,7 @@ struct ContentView: View {
         VStack(alignment: .leading, spacing: 10) {
             readingsSection
             serviceBanner
+            UpdateSection(updater: model.updater, banner: true)
             Divider()
             switch model.selectedTab {
             case .cooling: coolingTab
@@ -261,6 +262,8 @@ struct ContentView: View {
                 Text(tr("과열 한 번에 한 번만 알리고, 5° 이상 식으면 다시 대기합니다.", "Alerts once per hot spell and re-arms after cooling 5° below."))
                     .font(.caption).foregroundStyle(.secondary)
             }
+            Divider()
+            UpdateSection(updater: model.updater)
             // Settings window only; too easy to hit by accident in the menu bar popover.
             if !inPopover {
                 Divider()

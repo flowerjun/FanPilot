@@ -47,6 +47,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 final class AppModel: ObservableObject {
     /// Per-tick readings live in their own object; see LiveState.
     let live = LiveState()
+    /// GitHub release check and in-place update (one request at launch and daily).
+    let updater = Updater()
     @Published var draft: FanConfig
     @Published var saved: FanConfig
     @Published var message: String?

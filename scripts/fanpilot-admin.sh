@@ -4,9 +4,10 @@
 #
 #   fanpilot-admin.sh install   <FanPilot.app path> <user>
 #   fanpilot-admin.sh uninstall <FanPilot.app path> <user>
+#   fanpilot-admin.sh update    <new FanPilot.app> <user> <installed FanPilot.app path>
 set -uo pipefail
 [[ $EUID -eq 0 ]] || { echo "root 권한이 필요합니다"; exit 1; }
-[[ $# -eq 3 ]] || { echo "usage: $0 install|uninstall <app> <user>"; exit 2; }
+[[ $# -ge 3 ]] || { echo "usage: $0 install|uninstall <app> <user> | update <new app> <user> <dest>"; exit 2; }
 CMD=$1 APP=$2 USER_NAME=$3
 LABEL=com.flowerjun.fanpilot
 PLIST=/Library/LaunchDaemons/$LABEL.plist
@@ -51,6 +52,25 @@ uninstall)
     rm -rf "$USER_HOME/Library/Saved Application State/$LABEL.savedState" "$USER_HOME/Library/Caches/$LABEL"
     [[ $APP == *.app && -d $APP ]] && rm -rf "$APP"
     echo "제거 완료. 팬은 시스템 자동 제어로 돌아갔습니다."
+    ;;
+update)
+    # Replace the installed app with a verified new copy, then refresh the service if one is
+    # installed (a fanless Mac never has one). The copy carries no quarantine flag, so the new
+    # version opens without Gatekeeper asking again.
+    set -e
+    DEST=${4:-}
+    [[ $DEST == *.app && -d $APP/Contents/MacOS ]] || { echo "잘못된 업데이트 경로"; exit 2; }
+    TMP="$DEST.updating"
+    rm -rf "$TMP"
+    ditto "$APP" "$TMP"
+    xattr -cr "$TMP"
+    chown -R "$USER_NAME":staff "$TMP"
+    rm -rf "$DEST"
+    mv "$TMP" "$DEST"
+    if [[ -f $PLIST ]]; then
+        exec /bin/zsh "$DEST/Contents/Resources/fanpilot-admin.sh" install "$DEST" "$USER_NAME"
+    fi
+    echo "업데이트 완료"
     ;;
 *)
     echo "unknown command: $CMD"; exit 2 ;;

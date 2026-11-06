@@ -92,12 +92,30 @@ One-click presets or your own CPU & GPU fan curves, a live system monitor, and o
 
 ## Install
 
+### One line in Terminal (easiest)
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/flowerjun/FanPilot/main/scripts/get.sh | bash
+```
+
+It downloads the latest release, checks it against the SHA-256 GitHub publishes, and copies FanPilot into **Applications**. Files fetched this way aren't quarantined, so there is no "Open Anyway" step. Run the same line again any time to update.
+
+Then click **Install (admin password)** at the top of the FanPilot window to install the fan service.
+
+### From the DMG
+
 1. Download `FanPilot.dmg` from the [Releases](../../releases) page.
 2. Open it and drag **FanPilot** into **Applications**.
 3. Open FanPilot. It isn't notarized, so the first time macOS may say it can't verify the developer: right-click the app → **Open** → **Open**, or click **Open Anyway** in **System Settings → Privacy & Security**.
 4. Click **Install (admin password)** at the top of the window. This installs the small background service that actually sets the fan speed.
 
 The service starts at boot. To have the menu bar item at login too, turn on **General → Open at Login**.
+
+### Updating
+
+FanPilot checks GitHub for a new version shortly after launch and once a day (turn it off under **General**). When one is out, a banner appears; click **Update**. The app downloads it, verifies the SHA-256, asks for your admin password once, replaces itself, updates the fan service and reopens. No deleting, no "Open Anyway" again.
+
+This works from 0.1.2 on. To get from 0.1.1 or earlier to 0.1.2, use the Terminal line above (or the DMG once more).
 
 ## Using FanPilot
 
@@ -202,8 +220,9 @@ Sources/
   App/     FanPilotApp.swift (model), ContentView.swift (tabs), Monitor.swift,
            Charts.swift, Components.swift (shared UI), Presets.swift,
            StatusBarController.swift, LiveState.swift, SystemInfo.swift,
-           DaemonInstaller.swift, Localization.swift
-scripts/   fanpilot-admin.sh  (root install/uninstall, bundled into the app)
+           DaemonInstaller.swift, Updater.swift, Localization.swift
+scripts/   fanpilot-admin.sh  (root install/update/uninstall, bundled into the app)
+           get.sh             (one-line install / update from Terminal)
 tools/     make_icon.swift
 ```
 
