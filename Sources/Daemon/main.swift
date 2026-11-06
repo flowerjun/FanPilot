@@ -13,18 +13,27 @@ do { smc = try SMC() } catch { FileHandle.standardError.write("SMC open failed: 
 
 func log(_ s: String) { FileHandle.standardError.write("[fanpilotd] \(s)\n".data(using: .utf8)!) }
 
-/// Number of fans (FNum), read once.
-let fanCount = max(1, Int((try? smc.read("FNum").double) ?? 1))
+/// Fan count and this Mac's key names, read once.
+let fanKeys = FanKeys(smc: smc)
+let fanCount = fanKeys.count
 /// Last RPM written to each fan's F{i}Tg while in manual mode; nil means "unknown, write it".
 var writtenRPM = [Double?](repeating: nil, count: fanCount)
 /// Ticks since the targets were last written; re-asserted periodically in case anything else touched them.
 var ticksSinceWrite = 0
 let reassertEvery = 15   // × 2 s = 30 s
+/// When Ftst was written. macOS takes a few seconds to release the fans after it, and mode
+/// writes fail meanwhile; that isn't an error, so the controller just retries.
+var unlockedAt: Date?
+let unlockGrace: TimeInterval = 15
 
 /// Every fan back to macOS control. Tries all fans even if one write fails.
 func setSystemMode() {
     for i in 0..<fanCount {
-        do { try smc.write("F\(i)Md", bytes: [0]) } catch { log("restore auto failed on fan \(i): \(error)") }
+        do { try fanKeys.setManual(smc, fan: i, false) } catch { log("restore auto failed on fan \(i): \(error)") }
+    }
+    if let unlock = fanKeys.unlock {
+        do { try smc.write(unlock, value: 0) } catch { log("relock failed: \(error)") }
+        unlockedAt = nil
     }
     writtenRPM = .init(repeating: nil, count: fanCount)
 }
@@ -38,9 +47,12 @@ func setRPM(_ rpm: Double, fans: [FanReading]) throws {
     let fraction = f0.max > f0.min ? (rpm - f0.min) / (f0.max - f0.min) : 1
     for (i, fan) in fans.enumerated() {
         let target = i == 0 ? rpm : (fan.min + fraction * (fan.max - fan.min)).rounded()
-        if !fan.manual { try smc.write("F\(i)Md", bytes: [1]); writtenRPM[i] = nil }
+        if !fan.manual {
+            if let unlock = fanKeys.unlock, unlockedAt == nil { try smc.write(unlock, value: 1); unlockedAt = Date() }
+            try fanKeys.setManual(smc, fan: i, true); writtenRPM[i] = nil
+        }
         if writtenRPM[i] != target || reassert {
-            try smc.write("F\(i)Tg", float: Float(target))
+            try smc.write("F\(i)Tg", value: target)
             writtenRPM[i] = target
         }
     }
@@ -160,8 +172,14 @@ func tick() {
     if let t = target {
         let clamped = min(max(t, r.fanMin), r.fanMax)
         let fans = r.fans ?? [FanReading(rpm: r.fanRPM, min: r.fanMin, max: r.fanMax, manual: r.manual)]
-        do { try setRPM(clamped, fans: fans); manualActive = true; target = clamped }
-        catch { problem = "fan_write:\(error)"; setSystemMode(); manualActive = false; target = nil }
+        if fanCount == 0 { problem = "no_fan"; target = nil }
+        else {
+            do { try setRPM(clamped, fans: fans); manualActive = true; target = clamped }
+            catch where unlockedAt.map({ Date().timeIntervalSince($0) < unlockGrace }) ?? false {
+                writtenRPM = .init(repeating: nil, count: fanCount)   // macOS still releasing; retry next tick
+            }
+            catch { problem = "fan_write:\(error)"; setSystemMode(); manualActive = false; target = nil }
+        }
     } else if manualActive || r.manual {
         setSystemMode(); manualActive = false
     }

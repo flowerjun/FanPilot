@@ -37,6 +37,7 @@ func localizedDaemonError(_ raw: String) -> String {
     switch parts[0] {
     case "config_parse": return tr("config.json 파싱 실패", "Could not parse config.json")
     case "sensor_read": return tr("온도 센서 읽기 실패", "Could not read temperature sensors")
+    case "no_fan": return tr("이 Mac에는 팬이 없습니다", "This Mac has no fan")
     case "fan_write": return tr("팬 쓰기 실패: ", "Could not set fan speed: ") + detail
     default: return raw   // e.g. text from an older daemon
     }

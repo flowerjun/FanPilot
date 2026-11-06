@@ -191,9 +191,11 @@ struct HistoryCharts: View, Equatable {
             block(tr("사용률", "Load"), "%",
                   LineChart(series: [series(\.cpuUsage, .accentColor), series(\.gpuUsage, .purple)], xRange: xr, yRange: 0...100,
                             xLabels: xl, yLabels: [(0, "0"), (50, "50"), (100, "100")]))
-            block(tr("팬", "Fan"), "RPM",
-                  LineChart(series: [series(\.rpm, .accentColor)], xRange: xr, yRange: fanMin...fanMax,
-                            xLabels: xl, yLabels: CurvePreview.ticks(fanMin...fanMax, count: 3).map { ($0, "\(Int($0))") }))
+            if !Hardware.isFanless {
+                block(tr("팬", "Fan"), "RPM",
+                      LineChart(series: [series(\.rpm, .accentColor)], xRange: xr, yRange: fanMin...fanMax,
+                                xLabels: xl, yLabels: CurvePreview.ticks(fanMin...fanMax, count: 3).map { ($0, "\(Int($0))") }))
+            }
         }
     }
 

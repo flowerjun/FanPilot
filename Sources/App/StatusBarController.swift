@@ -183,6 +183,8 @@ final class StatusBarController: NSObject {
         let event = NSApp.currentEvent
         if event?.type == .rightMouseUp || event?.modifierFlags.contains(.control) == true {
             togglePopover()
+        } else if Hardware.isFanless {
+            togglePopover()   // no modes to cycle without a fan
         } else {
             model.cycleMode()
         }
@@ -210,7 +212,7 @@ final class StatusBarController: NSObject {
         // Filled fan = FanPilot is controlling; outline = macOS is.
         var parts: [String] = []
         if model.showTemp { parts.append(temp.map { model.tempUnit.text($0, symbol: false) } ?? "--°") }
-        if model.showRPM { parts.append(readings.fanRPM.map { "\(Int($0))" } ?? "--") }
+        if model.showRPM && !Hardware.isFanless { parts.append(readings.fanRPM.map { "\(Int($0))" } ?? "--") }
         let text = parts.joined(separator: "\u{2002}")   // en space: a bit wider than a normal space
         // imageHugsTitle leaves only ~3 pt between icon and text; a thin space adds a little air.
         let title = model.showIcon && !text.isEmpty ? "\u{2009}" + text : text

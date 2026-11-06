@@ -36,6 +36,15 @@ struct ChipInfo {
     }()
 }
 
+/// Fan hardware, read once at launch (a few SMC reads, no root needed).
+enum Hardware {
+    /// nil if the SMC couldn't be opened; then the fan controls stay available rather than
+    /// wrongly calling the Mac fanless.
+    static let fanCount: Int? = (try? SMC()).map { FanKeys(smc: $0).count }
+    /// MacBook Air and other fanless Macs: FanPilot works as a temperature monitor only.
+    static let isFanless = fanCount == 0
+}
+
 /// CPU and GPU utilization, sampled by LiveState on its existing 2 s tick. Each sample is one
 /// kernel call for the CPU and one registry property read for the GPU (service found once).
 final class UsageSampler {

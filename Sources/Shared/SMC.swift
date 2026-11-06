@@ -42,7 +42,7 @@ public final class SMC {
         }
     }
 
-    public enum SMCError: Error { case notFound, open(kern_return_t), call(kern_return_t), smc(UInt8) }
+    public enum SMCError: Error { case notFound, open(kern_return_t), call(kern_return_t), smc(UInt8), unsupportedType(String) }
 
     private var conn: io_connect_t = 0
     private var infoCache: [String: KeyInfo] = [:]   // key type/size never changes; halves IOKit calls
@@ -96,9 +96,23 @@ public final class SMC {
         _ = try call(&input)
     }
 
-    public func write(_ key: String, float: Float) throws {
-        try write(key, bytes: withUnsafeBytes(of: float) { Array($0) })
+    /// Writes a number in whatever encoding the key uses, so the same call works on every Mac
+    /// (Apple Silicon fan keys are `flt `, Intel ones `fpe2`, mode keys `ui8 `/`ui16`).
+    public func write(_ key: String, value: Double) throws {
+        let type = Self.string(try info(key).dataType)
+        func be16(_ v: UInt16) -> [UInt8] { [UInt8(v >> 8), UInt8(v & 0xff)] }
+        let bytes: [UInt8]
+        switch type {
+        case "flt ": bytes = withUnsafeBytes(of: Float(value)) { Array($0) }
+        case "fpe2": bytes = be16(UInt16(clamping: Int((value * 4).rounded())))
+        case "ui16": bytes = be16(UInt16(clamping: Int(value.rounded())))
+        case "ui8 ": bytes = [UInt8(clamping: Int(value.rounded()))]
+        default: throw SMCError.unsupportedType(type)
+        }
+        try write(key, bytes: bytes)
     }
+
+    public func exists(_ key: String) -> Bool { (try? info(key)) != nil }
 
     public func keyCount() throws -> Int { Int(try read("#KEY").double ?? 0) }
 

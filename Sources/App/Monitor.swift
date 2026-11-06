@@ -19,6 +19,11 @@ struct MonitorView: View {
             // Fans and system cards in separate grids, so an odd number of fans never pushes the
             // CPU / GPU / memory / disk cards out of their 2 × 2 layout.
             LazyVGrid(columns: columns, spacing: 8) {
+                if Hardware.isFanless {
+                    MetricCard(title: tr("팬", "Fan"), value: tr("없음", "None")) {
+                        Text(tr("팬이 없는 Mac입니다", "This Mac has no fan")).font(.system(size: 9)).foregroundStyle(.secondary)
+                    }
+                }
                 ForEach(Array((live.readings.fans ?? []).enumerated()), id: \.offset) { i, fan in
                     fanCard(i, fan, count: live.readings.fans?.count ?? 1)
                 }
@@ -63,7 +68,9 @@ struct MonitorView: View {
         let e = min(chip.efficiencyCores, cores.count)
         var groups: [CoreBars.Group] = []
         if e > 0 { groups.append(.init(label: tr("효율 ×\(e)", "Eff ×\(e)"), values: Array(cores.prefix(e)))) }
-        if cores.count > e { groups.append(.init(label: tr("성능 ×\(cores.count - e)", "Perf ×\(cores.count - e)"), values: Array(cores.dropFirst(e)))) }
+        // Intel has one kind of core; calling them "performance" would be misleading.
+        let rest = cores.count - e
+        if rest > 0 { groups.append(.init(label: e > 0 ? tr("성능 ×\(rest)", "Perf ×\(rest)") : tr("코어 ×\(rest)", "Cores ×\(rest)"), values: Array(cores.dropFirst(e)))) }
         return MetricCard(title: "CPU", detail: tr("\(chip.performanceCores + chip.efficiencyCores)코어", "\(chip.performanceCores + chip.efficiencyCores) cores"),
                           value: Format.percent(live.cpuUsage)) {
             CoreBars(groups: groups)
@@ -125,10 +132,10 @@ struct MonitorView: View {
                 .font(.caption)
                 GridRow { Text("CPU").font(.caption.bold()); Text(temp(s.cpuPeak)); Text(temp(s.cpuAvg)); Text(Format.percent(s.cpuUsagePeak)) }
                 GridRow { Text("GPU").font(.caption.bold()); Text(temp(s.gpuPeak)); Text(temp(s.gpuAvg)); Text(Format.percent(s.gpuUsagePeak)) }
-                GridRow {
+                if !Hardware.isFanless { GridRow {
                     Text(tr("팬", "Fan")).font(.caption.bold())
                     Text(Format.rpm(s.rpmPeak)); Text(Format.rpm(s.rpmAvg)); Text("RPM").foregroundStyle(.secondary)
-                }
+                } }
             }
             .font(.callout.monospacedDigit())
         }

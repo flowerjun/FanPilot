@@ -3,13 +3,25 @@
 set -euo pipefail
 cd "${0:A:h}"
 rm -rf build && mkdir -p build
-TARGET=arm64-apple-macos14
+# Universal: Apple Silicon and Intel Macs that run macOS 14+.
+ARCHS=(arm64 x86_64)
 
-swiftc -O -target $TARGET -o build/fanpilotd Sources/Shared/*.swift Sources/Daemon/main.swift
+# swiftc builds one architecture at a time; lipo joins them.
+universal() {   # universal <output> <extra swiftc flags…> -- <sources…>
+  local out=$1; shift
+  local parts=()
+  for a in $ARCHS; do
+    swiftc -O -target $a-apple-macos14 -o $out.$a "$@"
+    parts+=$out.$a
+  done
+  lipo -create $parts -output $out && rm -f $parts
+}
+
+universal build/fanpilotd Sources/Shared/*.swift Sources/Daemon/main.swift
 
 APP=build/FanPilot.app
 mkdir -p $APP/Contents/MacOS
-swiftc -O -parse-as-library -target $TARGET -o $APP/Contents/MacOS/FanPilot Sources/Shared/*.swift Sources/App/*.swift
+universal $APP/Contents/MacOS/FanPilot -parse-as-library Sources/Shared/*.swift Sources/App/*.swift
 cat > $APP/Contents/Info.plist <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -18,8 +30,8 @@ cat > $APP/Contents/Info.plist <<PLIST
   <key>CFBundleName</key><string>FanPilot</string>
   <key>CFBundleExecutable</key><string>FanPilot</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.1.0</string>
-  <key>CFBundleVersion</key><string>1</string>
+  <key>CFBundleShortVersionString</key><string>0.1.1</string>
+  <key>CFBundleVersion</key><string>2</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
 </dict></plist>

@@ -2,7 +2,7 @@
 
 # FanPilot
 
-**A tiny, fail-safe fan controller for Apple Silicon Macs that lives in your menu bar.**
+**A tiny, fail-safe fan controller for Macs that lives in your menu bar.**
 
 One-click presets or your own CPU & GPU fan curves, a live system monitor, and one click to hand control back to macOS.
 
@@ -81,11 +81,13 @@ One-click presets or your own CPU & GPU fan curves, a live system monitor, and o
 
 ## Requirements
 
-- An **Apple Silicon** Mac with a fan (Mac mini, Mac Studio, MacBook Pro, iMac). Fanless Macs such as the MacBook Air have nothing to control.
+- Any Mac that runs macOS 14: **Apple Silicon (M1–M5)** or **Intel**. One universal app.
+- FanPilot reads which fan keys your Mac has and uses those, so it adapts to each generation: `F0Md` on M1–M4 and Intel, `F0md` on M5, plus the `Ftst` unlock that M3/M4 MacBook Pros need.
+- **Fanless Macs** (MacBook Air): there's no fan to control, so the app says so plainly and works as a temperature and load monitor.
 - **macOS 14 Sonoma** or later.
 - An administrator password, once, to install the fan-control service.
 
-> Tested on a Mac mini (M4 Pro, one fan) running macOS 27.2.
+> Tested on a Mac mini (M4 Pro, one fan) running macOS 27.2. The M5, M3/M4 MacBook Pro and Intel paths follow what those Macs expose but haven't been run on that hardware yet.
 > Macs with two or more fans are supported in code and the layout was checked with simulated fans, but multi-fan control **hasn't been verified on real hardware yet**. Reports are welcome.
 
 ## Install
@@ -149,7 +151,7 @@ Fractions of the fan's range (Mac mini M4 Pro: 1000–4900 RPM), smooth curve on
 
 - **`fanpilotd`** runs as root because writing fan speeds to the SMC needs root. It is two processes from one binary that watch each other (see [Safety](#safety)). Every 2 seconds the controller reads the sensors, picks the target RPM and writes it to every fan.
 - **`FanPilot.app`** is a normal user app. It writes your settings to `/Users/Shared/FanPilot/config.json` and shows what the service reports in `/var/run/fanpilot.json`. Root is only needed to install or remove the service.
-- **Sensors:** CPU average over all `Tp*` (performance) and `Te*` (efficiency) sensors, GPU average over `Tg*`. A 3-sample median removes one-tick spikes from idle cores.
+- **Sensors:** CPU average over all `Tp*` (performance) and `Te*` (efficiency) sensors, GPU average over `Tg*` (Intel: `TC*` and `TG*`). A 3-sample median removes one-tick spikes from idle cores.
 - **Fans:** `F{i}Md = 1` puts fan *i* in manual mode, `F{i}Tg` sets its target, `F{i}Md = 0` gives it back to macOS.
 
 ## Safety

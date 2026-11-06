@@ -80,7 +80,25 @@ struct ContentView: View {
 
     // MARK: Cooling
 
-    private var coolingTab: some View {
+    /// Shown instead of the cooling controls on Macs without a fan: an explanation, not an error.
+    private var fanlessNotice: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(tr("이 Mac에는 팬이 없습니다", "This Mac has no fan"), systemImage: "fanblades.slash")
+                .font(.callout.bold())
+            Text(tr("MacBook Air처럼 팬이 없는 Mac은 macOS가 성능을 조절해 온도를 관리하므로, 제어할 팬이 없습니다. 이 Mac에서는 FanPilot을 온도·사용률 모니터로 쓸 수 있습니다.",
+                    "Fanless Macs such as the MacBook Air manage heat by adjusting performance, so there is no fan to control. FanPilot works here as a temperature and load monitor."))
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button(tr("모니터 보기", "Open Monitor")) { model.selectedTab = .history }
+        }
+        .card()
+    }
+
+    @ViewBuilder private var coolingTab: some View {
+        if Hardware.isFanless { fanlessNotice } else { coolingControls }
+    }
+
+    private var coolingControls: some View {
         VStack(alignment: .leading, spacing: 10) {
             sectionTitle(tr("빠른 설정", "Quick setup"))
             quickSetupGrid
@@ -264,7 +282,7 @@ struct ContentView: View {
                 Text(tr("표시", "Show")).foregroundStyle(.secondary)
                 Toggle(tr("아이콘", "Icon"), isOn: $model.showIcon).disabled(model.isLastShown(\.showIcon))
                 Toggle(tr("온도", "Temp"), isOn: $model.showTemp).disabled(model.isLastShown(\.showTemp))
-                Toggle("RPM", isOn: $model.showRPM).disabled(model.isLastShown(\.showRPM))
+                if !Hardware.isFanless { Toggle("RPM", isOn: $model.showRPM).disabled(model.isLastShown(\.showRPM)) }
             }
             .toggleStyle(.checkbox)
             .font(.callout)
@@ -352,8 +370,12 @@ struct ContentView: View {
         .font(.callout)
     }
 
-    @ViewBuilder
-    private var serviceBanner: some View {
+    @ViewBuilder private var serviceBanner: some View {
+        // Nothing to install on a fanless Mac: the service only exists to drive fans.
+        if !Hardware.isFanless { installBanner }
+    }
+
+    @ViewBuilder private var installBanner: some View {
         switch model.daemonState {
         case .installed:
             EmptyView()
@@ -479,7 +501,7 @@ struct LiveHeader: View {
                 // Several fans don't fit in one row; the header shows their average and the
                 // Monitor tab has a card per fan.
                 let count = live.readings.fans?.count ?? 1
-                stat(count > 1 ? tr("팬 평균 (\(count)개)", "Fans avg (\(count))") : tr("팬", "Fan"), Format.rpm(live.readings.fanRPM) + " RPM")
+                if !Hardware.isFanless { stat(count > 1 ? tr("팬 평균 (\(count)개)", "Fans avg (\(count))") : tr("팬", "Fan"), Format.rpm(live.readings.fanRPM) + " RPM") }
             }
             HStack(spacing: 6) {
                 Circle().fill(statusColor).frame(width: 8, height: 8)
@@ -496,12 +518,14 @@ struct LiveHeader: View {
     }
 
     private var statusColor: Color {
+        if Hardware.isFanless { return .secondary }
         guard live.daemonAlive, let s = live.status else { return .red }
         if s.emergency { return .orange }
         return s.error == nil ? .green : .orange
     }
 
     private var statusText: String {
+        if Hardware.isFanless { return tr("팬이 없는 Mac · 온도 모니터로 동작 중", "No fan on this Mac · monitoring only") }
         guard live.daemonAlive, let s = live.status else { return tr("팬 제어 서비스가 실행 중이 아닙니다", "Fan control service isn't running") }
         if let e = s.error { return localizedDaemonError(e) }
         if s.emergency { return tr("비상: 최대 RPM으로 동작 중", "Emergency: running at max RPM") }
