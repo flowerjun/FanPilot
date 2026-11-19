@@ -36,18 +36,54 @@ func setSystemMode() {
         unlockedAt = nil
     }
     writtenRPM = .init(repeating: nil, count: fanCount)
+    stalledTicks = 0
+}
+
+/// Sleep/wake (lid close, or a lock that lets the display sleep) can reset `Ftst` on the Macs that
+/// have it. macOS then owns the fans again while F{i}Md may still read 1, so nothing else looks
+/// wrong: the daemon kept writing targets that were ignored and the fans stopped (0 RPM).
+/// One SMC read per tick; skipped during the grace period right after unlocking.
+func unlockLost() -> Bool {
+    guard let key = fanKeys.unlock, let at = unlockedAt, Date().timeIntervalSince(at) >= unlockGrace else { return false }
+    return (try? smc.read(key).double) != 1
+}
+
+/// Consecutive ticks a fan we drive has stayed far below its target (see `fansIgnoringTarget`).
+var stalledTicks = 0
+let stallLimit = 5   // × 2 s = 10 s, longer than any spin-up
+
+/// Catch-all for any other way the firmware takes the fans back without telling us: in manual
+/// mode a fan that sits under half its target for 10 s isn't obeying. Targets are clamped to at
+/// least the fan's minimum, so a stopped fan never counts as obeying.
+func fansIgnoringTarget(_ fans: [FanReading]) -> Bool {
+    let stalled = fans.enumerated().contains { i, fan in
+        guard fan.manual, let rpm = fan.rpm, i < writtenRPM.count, let target = writtenRPM[i] else { return false }
+        return target >= 500 && rpm < target * 0.5
+    }
+    stalledTicks = stalled ? stalledTicks + 1 : 0
+    return stalledTicks >= stallLimit
 }
 
 /// `rpm` is in fan 0's range; every other fan runs at the same fraction of its own range.
 /// Only touches the SMC when something actually needs to change.
 func setRPM(_ rpm: Double, fans: [FanReading]) throws {
+    if unlockLost() {
+        log("Ftst was reset (sleep/wake?); taking the fans back")
+        unlockedAt = nil
+    } else if fansIgnoringTarget(fans) {
+        // Start the handover over from scratch: back to macOS, then take the fans again below.
+        log("fans not following the target; re-taking control")
+        setSystemMode()
+    }
+    // After a lost unlock the mode keys need writing again too, even if they still read 1.
+    let retake = fanKeys.unlock != nil && unlockedAt == nil
     ticksSinceWrite += 1
     let reassert = ticksSinceWrite >= reassertEvery
     let f0 = fans[0]
     let fraction = f0.max > f0.min ? (rpm - f0.min) / (f0.max - f0.min) : 1
     for (i, fan) in fans.enumerated() {
         let target = i == 0 ? rpm : (fan.min + fraction * (fan.max - fan.min)).rounded()
-        if !fan.manual {
+        if !fan.manual || retake {
             if let unlock = fanKeys.unlock, unlockedAt == nil { try smc.write(unlock, value: 1); unlockedAt = Date() }
             try fanKeys.setManual(smc, fan: i, true); writtenRPM[i] = nil
         }

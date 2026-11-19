@@ -6,6 +6,7 @@ struct HistorySample {
     let cpu: Double?
     let gpu: Double?
     let rpm: Double?
+    let power: Double?
     let cpuUsage: Double?
     let gpuUsage: Double?
 }
@@ -17,6 +18,8 @@ final class LiveState: ObservableObject {
     @Published private(set) var readings = Readings()
     @Published private(set) var status: DaemonStatus?
     @Published private(set) var daemonAlive = false
+    /// Whole-system power draw, watts (nil where the Mac doesn't report it).
+    @Published private(set) var power: Double?
     /// Latest utilization, percent. Not @Published: only the History tab shows it, and that tab
     /// re-renders with `readings` anyway; publishing would redraw the header every tick.
     private(set) var cpuUsage: Double?
@@ -36,6 +39,7 @@ final class LiveState: ObservableObject {
     /// Created lazily: enumerating the SMC keys is the most expensive thing the app does.
     private lazy var sensors: Sensors? = (try? SMC()).map(Sensors.init)
     private let usage = UsageSampler()
+    private let powerSampler = PowerSampler()
     private var timer: Timer?
     private let decoder: JSONDecoder = { let d = JSONDecoder(); d.dateDecodingStrategy = .iso8601; return d }()
 
@@ -63,6 +67,9 @@ final class LiveState: ObservableObject {
         let latest = (alive ? new?.readings : nil) ?? sensors?.read() ?? readings
         if latest != readings { readings = latest }
 
+        let watts = powerSampler.watts()
+        if watts != power { power = watts }
+
         // Whole percents: finer changes aren't worth a re-render.
         let cpu = usage.cpuPercent()?.rounded(), gpu = usage.gpuPercent()?.rounded()
         cpuUsage = cpu
@@ -74,7 +81,7 @@ final class LiveState: ObservableObject {
         tick &+= 1
 
         if history.count == Self.historyLimit { history.removeFirst() }
-        history.append(HistorySample(time: Date(), cpu: latest.cpuAverage, gpu: latest.gpuAverage, rpm: latest.fanRPM,
+        history.append(HistorySample(time: Date(), cpu: latest.cpuAverage, gpu: latest.gpuAverage, rpm: latest.fanRPM, power: watts,
                                      cpuUsage: cpu, gpuUsage: gpu))
     }
 }

@@ -127,4 +127,7 @@ enum Format {
     static func percent(_ v: Double?) -> String { v.map { "\(Int($0.rounded()))%" } ?? "--" }
 
     static func rpm(_ v: Double?) -> String { v.map { "\(Int($0))" } ?? "--" }
+
+    /// Watts with one decimal (e.g. "37.1").
+    static func watts(_ v: Double?) -> String { v.map { String(format: "%.1f", $0) } ?? "--" }
 }

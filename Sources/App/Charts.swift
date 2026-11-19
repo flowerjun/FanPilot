@@ -196,6 +196,13 @@ struct HistoryCharts: View, Equatable {
                       LineChart(series: [series(\.rpm, .accentColor)], xRange: xr, yRange: fanMin...fanMax,
                                 xLabels: xl, yLabels: CurvePreview.ticks(fanMin...fanMax, count: 3).map { ($0, "\(Int($0))") }))
             }
+            if Hardware.hasPowerSensor {
+                let watts = series(\.power, .orange)
+                let wMax = max(10, ((watts.points.map(\.y).max() ?? 10) * 1.15 / 10).rounded(.up) * 10)
+                block(tr("전력", "Power"), "W",
+                      LineChart(series: [watts], xRange: xr, yRange: 0...wMax, xLabels: xl,
+                                yLabels: [(0, "0"), (wMax / 2, "\(Int(wMax / 2))"), (wMax, "\(Int(wMax))")]))
+            }
         }
     }
 

@@ -213,6 +213,7 @@ final class StatusBarController: NSObject {
         var parts: [String] = []
         if model.showTemp { parts.append(temp.map { model.tempUnit.text($0, symbol: false) } ?? "--°") }
         if model.showRPM && !Hardware.isFanless { parts.append(readings.fanRPM.map { "\(Int($0))" } ?? "--") }
+        if model.showPower && Hardware.hasPowerSensor { parts.append((model.live.power.map { "\(Int($0.rounded()))" } ?? "--") + "W") }
         let text = parts.joined(separator: "\u{2002}")   // en space: a bit wider than a normal space
         // imageHugsTitle leaves only ~3 pt between icon and text; a thin space adds a little air.
         let title = model.showIcon && !text.isEmpty ? "\u{2009}" + text : text

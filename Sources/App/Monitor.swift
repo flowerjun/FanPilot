@@ -27,6 +27,7 @@ struct MonitorView: View {
                 ForEach(Array((live.readings.fans ?? []).enumerated()), id: \.offset) { i, fan in
                     fanCard(i, fan, count: live.readings.fans?.count ?? 1)
                 }
+                if Hardware.hasPowerSensor { powerCard(stats) }
             }
             LazyVGrid(columns: columns, spacing: 8) {
                 cpuCard
@@ -57,6 +58,21 @@ struct MonitorView: View {
                 Text(tr("최소 ", "Min ") + Format.rpm(fan.min))
                 Spacer()
                 Text(tr("최대 ", "Max ") + Format.rpm(fan.max))
+            }
+            .font(.system(size: 9)).foregroundStyle(.secondary)
+        }
+    }
+
+    /// Whole-system draw; the bar is relative to the peak of the last 10 minutes.
+    private func powerCard(_ s: HistoryStats) -> some View {
+        let peak = max(s.powerPeak ?? 0, live.power ?? 0, 1)
+        return MetricCard(title: tr("전력", "Power"), detail: tr("Mac 전체", "Whole Mac"),
+                          value: Format.watts(live.power), unit: "W") {
+            UsageBar(fraction: (live.power ?? 0) / peak, color: .orange)
+            HStack {
+                Text(tr("평균 ", "Avg ") + Format.watts(s.powerAvg))
+                Spacer()
+                Text(tr("최고 ", "Peak ") + Format.watts(s.powerPeak))
             }
             .font(.system(size: 9)).foregroundStyle(.secondary)
         }
@@ -136,6 +152,10 @@ struct MonitorView: View {
                     Text(tr("팬", "Fan")).font(.caption.bold())
                     Text(Format.rpm(s.rpmPeak)); Text(Format.rpm(s.rpmAvg)); Text("RPM").foregroundStyle(.secondary)
                 } }
+                if Hardware.hasPowerSensor { GridRow {
+                    Text(tr("전력", "Power")).font(.caption.bold())
+                    Text(Format.watts(s.powerPeak)); Text(Format.watts(s.powerAvg)); Text("W").foregroundStyle(.secondary)
+                } }
             }
             .font(.callout.monospacedDigit())
         }
@@ -193,7 +213,7 @@ struct AdviceView: View {
 struct HistoryStats {
     let count: Int
     let minutes: Int
-    let cpuPeak, cpuAvg, gpuPeak, gpuAvg, rpmPeak, rpmAvg, cpuUsagePeak, gpuUsagePeak: Double?
+    let cpuPeak, cpuAvg, gpuPeak, gpuAvg, rpmPeak, rpmAvg, powerPeak, powerAvg, cpuUsagePeak, gpuUsagePeak: Double?
 
     init(_ h: [HistorySample]) {
         func peak(_ k: KeyPath<HistorySample, Double?>) -> Double? { h.compactMap { $0[keyPath: k] }.max() }
@@ -206,6 +226,7 @@ struct HistoryStats {
         cpuPeak = peak(\.cpu); cpuAvg = avg(\.cpu)
         gpuPeak = peak(\.gpu); gpuAvg = avg(\.gpu)
         rpmPeak = peak(\.rpm); rpmAvg = avg(\.rpm)
+        powerPeak = peak(\.power); powerAvg = avg(\.power)
         cpuUsagePeak = peak(\.cpuUsage); gpuUsagePeak = peak(\.gpuUsage)
     }
 }

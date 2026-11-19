@@ -148,9 +148,14 @@ final class AppModel: ObservableObject {
     @Published var showRPM = UserDefaults.standard.object(forKey: "showRPM") as? Bool ?? true {
         didSet { UserDefaults.standard.set(showRPM, forKey: "showRPM") }
     }
+    /// Whole-system power draw (W) after the RPM; only offered where the Mac reports it.
+    @Published var showPower = UserDefaults.standard.object(forKey: "showPower") as? Bool ?? true {
+        didSet { UserDefaults.standard.set(showPower, forKey: "showPower") }
+    }
     /// True when `item` is the only thing still shown, so its toggle must stay on.
     func isLastShown(_ item: KeyPath<AppModel, Bool>) -> Bool {
-        self[keyPath: item] && [showIcon, showTemp, showRPM].filter { $0 }.count == 1
+        // Items this Mac can't show don't count as shown.
+        self[keyPath: item] && [showIcon, showTemp, showRPM && !Hardware.isFanless, showPower && Hardware.hasPowerSensor].filter { $0 }.count == 1
     }
     /// Spin the menu bar fan at a speed proportional to the real RPM (default on).
     @Published var spinIcon = UserDefaults.standard.object(forKey: "spinIcon") as? Bool ?? true {

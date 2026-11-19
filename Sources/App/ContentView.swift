@@ -286,6 +286,10 @@ struct ContentView: View {
                 Toggle(tr("아이콘", "Icon"), isOn: $model.showIcon).disabled(model.isLastShown(\.showIcon))
                 Toggle(tr("온도", "Temp"), isOn: $model.showTemp).disabled(model.isLastShown(\.showTemp))
                 if !Hardware.isFanless { Toggle("RPM", isOn: $model.showRPM).disabled(model.isLastShown(\.showRPM)) }
+                if Hardware.hasPowerSensor {
+                    Toggle(tr("전력(W)", "Power (W)"), isOn: $model.showPower).disabled(model.isLastShown(\.showPower))
+                        .help(tr("Mac 전체의 실시간 소비 전력", "Live power draw of the whole Mac"))
+                }
             }
             .toggleStyle(.checkbox)
             .font(.callout)
@@ -505,6 +509,7 @@ struct LiveHeader: View {
                 // Monitor tab has a card per fan.
                 let count = live.readings.fans?.count ?? 1
                 if !Hardware.isFanless { stat(count > 1 ? tr("팬 평균 (\(count)개)", "Fans avg (\(count))") : tr("팬", "Fan"), Format.rpm(live.readings.fanRPM) + " RPM") }
+                if Hardware.hasPowerSensor { stat(tr("전력", "Power"), Format.watts(live.power) + " W") }
             }
             HStack(spacing: 6) {
                 Circle().fill(statusColor).frame(width: 8, height: 8)

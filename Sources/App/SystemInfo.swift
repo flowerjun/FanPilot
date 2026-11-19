@@ -43,6 +43,21 @@ enum Hardware {
     static let fanCount: Int? = (try? SMC()).map { FanKeys(smc: $0).count }
     /// MacBook Air and other fanless Macs: FanPilot works as a temperature monitor only.
     static let isFanless = fanCount == 0
+    /// Apple Silicon reports the whole Mac's power draw in SMC `PSTR` (watts). Intel Macs don't.
+    static let hasPowerSensor = (try? SMC())?.exists(PowerSampler.key) ?? false
+}
+
+/// Whole-system power draw in watts, read from the SMC on LiveState's 2 s tick (one key read,
+/// no root needed). This is what the Mac as a whole draws, the same on battery and on power.
+final class PowerSampler {
+    static let key = "PSTR"
+    private let smc: SMC? = Hardware.hasPowerSensor ? try? SMC() : nil
+
+    /// Watts to 0.1 W: finer changes aren't worth a re-render.
+    func watts() -> Double? {
+        guard let smc, let w = try? smc.read(Self.key).double, w.isFinite, w >= 0 else { return nil }
+        return (w * 10).rounded() / 10
+    }
 }
 
 /// CPU and GPU utilization, sampled by LiveState on its existing 2 s tick. Each sample is one
